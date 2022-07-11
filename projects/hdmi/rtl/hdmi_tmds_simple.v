@@ -1,0 +1,133 @@
+/*
+ * hdmi_tmds_simple.v
+ *
+ * vim: ts=4 sw=4
+ *
+ * HDMI Simplified TMDS encoderTMDStop level
+ *
+ * Extracted from https://github.com/Wren6991/SmolDVI/ with small changes
+ * to fit it here.
+ *
+ * Copyright (C) 2021  Luke Wren <wren6991@gmail.com>
+ * SPDX-License-Identifier: CC0-1.0
+ */
+
+/* Original comments : */
+
+// This encoder is based on a property of the TMDS algorithm specified in DVI
+// spec: If the running balance is currently zero, and you encode data x
+// followed by x ^ 1, this produces a pair of TMDS symbols with net balance
+// zero, hence the running balance will *remain* at zero. Provided the input
+// follows this pattern (doubled pixels with alternating LSB), there is no
+// need to actually track the balance, which makes the encoder effectively
+// stateless.
+//
+// This leads to:
+// - Halving of horizontal resolution
+// - Loss of LSB (bit 0) of colour precision
+// - Toggling of colour LSBs (bit 0) across screen
+//
+// But this last effect is not noticeable in practice, and the first two are
+// acceptable for any pixel source that would fit onto a iCE40 UP5k or HX1k.
+//
+// Our TMDS algorithm:
+//
+// - Mask off d[0]
+// - If population count of d[7:0] less than 4:
+//     - q[9:8] = 2'b01 for both output symbols
+//     - First symbol q[n] = ^d[n:0] for n = 0...7
+//     - Second symbol inverse of first q[7:0] (thanks to input LSB toggling)
+// - Else:
+//     - q[9:8] = 2'b10 for both output symbols
+//     - First symbol same as less than case but XOR'd with 'h55 (this
+//       accounts for both XNOR-ness and q[9] complementing)
+//     - Second symbol inverse of first q[7:0] (thanks to input LSB toggling)
+//
+// These rules *exactly* reproduce Figure 3-5 on page 29 of DVI v1.0 spec, if
+// the pixels input to that algorithm are manipulated properly. You can check
+// this by enumerating all possible input values, running them through the
+// original algorithm with initial balance = 0 (recalling that balance is
+// defined to be 0 at the start of each scanline), and noting that the balance
+// returns to 0 after each output pixel pair, forming the sketch of an
+// induction proof.
+//
+// To check that the output of our algorithm is DC-balanced, observe that bits
+// q[9:8] always have one bit set, and bits q[7:0] are complemented over
+// consecutive pixels, so have an average population count of 4 out of 8.
+// Therefore for every 20 bits we output (2 TMDS symbols), there are 10 1 bits
+// and 10 0 bits.
+//
+// Note that the instantiator is responsible for holding d[7:0] constant over
+// two cycles (it's not registered here)
+
+`default_nettype none
+
+module hdmi_tmds_simple (
+	/* Encoded TMDS output */
+	output reg  [9:0] q,
+
+	/* Input */
+	input  wire [1:0] c,
+	input  wire [7:0] d,
+	input  wire       den,
+
+	/* Clock / Reset */
+	input  wire       clk,
+	input  wire       rst,
+);
+
+	// Signals
+	// -------
+
+	reg [2:0] popcount;
+	wire      low_balance;
+	reg [7:0] d_reduced;
+	reg       symbol_is_second;
+
+
+	always @(*)
+	begin: count_d_pop
+		integer i;
+		popcount = 3'd0;
+		// Ignore d[0] as it's implicitly masked
+		for (i = 1; i < 8; i = i + 1)
+			popcount = popcount + {2'h0, d[i]};
+	end
+
+	assign low_balance = !popcount[2];
+
+	always @ (*)
+	begin: reduce_d
+		integer i;
+		d_reduced = 8'h0;
+		for (i = 1; i < 8; i = i + 1)
+			d_reduced[i] = d_reduced[i - 1] ^ d[i];
+	end
+
+	wire [9:0] pixel_q = {
+		!low_balance,
+		low_balance,
+		d_reduced ^ (8'h55 & {8{!low_balance}}) ^ {8{symbol_is_second}}
+	};
+
+	always @ (posedge clk or posedge rst) begin
+		if (rst) begin
+			symbol_is_second <= 1'b0;
+			q <= 10'd0;
+		end else begin
+			if (den) begin
+				symbol_is_second <= !symbol_is_second;
+				q <= pixel_q;
+			end else begin
+				symbol_is_second <= 1'b0;
+				case (c)
+					2'b00: q <= 10'b1101010100;
+					2'b01: q <= 10'b0010101011;
+					2'b10: q <= 10'b0101010100;
+					2'b11: q <= 10'b1010101011;
+				endcase
+			end
+		end
+	end
+
+endmodule // hdmi_tmds_simple
