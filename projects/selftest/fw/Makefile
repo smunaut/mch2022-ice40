@@ -1,4 +1,4 @@
-BOARD ?= mch2022-proto4
+BOARD ?= mch2022-prod
 CROSS ?= riscv-none-embed-
 CC = $(CROSS)gcc
 OBJCOPY = $(CROSS)objcopy
