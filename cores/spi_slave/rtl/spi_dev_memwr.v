@@ -1,5 +1,5 @@
 /*
- * spi_memwr.v
+ * spi_dev_memwr.v
  *
  * vim: ts=4 sw=4
  *
@@ -11,7 +11,7 @@
 
 `default_nettype none
 
-module spi_memwr #(
+module spi_dev_memwr #(
 	parameter [7:0] CMD_BYTE = 8'he0
 )(
 	// Protocol wrapper interface
@@ -218,4 +218,4 @@ module spi_memwr #(
 	assign mi_wdata = fr_data;
 	assign fr_ena   = mi_wack;
 
-endmodule // spi_memwr
+endmodule // spi_dev_memwr

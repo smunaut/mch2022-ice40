@@ -10,7 +10,6 @@ PROJ_RTL_SRCS := $(addprefix rtl/, \
 	hdmi_tgen.v \
 	hdmi_tmds_simple.v \
 	memif_arb.v \
-	spi_memwr.v \
 	sysmgr.v \
 )
 PROJ_TOP_SRC := rtl/top.v

@@ -361,7 +361,7 @@ module top (
 	// SPI memory writer [2]
 	// -----------------
 
-	spi_memwr memwr_I (
+	spi_dev_memwr memwr_I (
 		.pw_wdata (pw_wdata),
 		.pw_wcmd  (pw_wcmd),
 		.pw_wstb  (pw_wstb),
