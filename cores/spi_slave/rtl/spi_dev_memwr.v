@@ -12,7 +12,14 @@
 `default_nettype none
 
 module spi_dev_memwr #(
-	parameter [7:0] CMD_BYTE = 8'he0
+	parameter [7:0] CMD_BYTE = 8'he0,
+	parameter integer DATA_WIDTH = 16,
+	parameter integer ADDR_WIDTH = 23,	// Word-address
+	parameter integer BURST_LEN = 64,	// In words
+
+	// auto-set
+	parameter integer DL = DATA_WIDTH - 1,
+	parameter integer AL = ADDR_WIDTH - 1
 )(
 	// Protocol wrapper interface
 	input  wire  [7:0] pw_wdata,
@@ -22,17 +29,17 @@ module spi_dev_memwr #(
 	input  wire        pw_end,
 
 	// Memory interface
-	output wire [31:0] mi_addr,
+	output wire [AL:0] mi_addr,
 	output wire [ 6:0] mi_len,
 	output wire        mi_rw,
 	output wire        mi_valid,
 	input  wire        mi_ready,
 
-	output wire [15:0] mi_wdata,
+	output wire [DL:0] mi_wdata,
 	input  wire        mi_wack,
 	input  wire        mi_wlast,
 
-	input  wire [15:0] mi_rdata,	// Not used
+	input  wire [DL:0] mi_rdata,	// Not used
 	input  wire        mi_rstb,		// Not used
 	input  wire        mi_rlast,	// Not used
 
@@ -57,17 +64,12 @@ module spi_dev_memwr #(
 	reg         bus_we_csr;
 	reg         bus_we_base;
 
-	// SPI
-	reg         spi_active;
-	reg         spi_byte_sel;
-	reg   [7:0] spi_byte_prev;
-
 	// FIFO
-	wire [15:0] fw_data;
+	wire [DL:0] fw_data;
 	wire        fw_ena;
 	wire        fw_full;
 
-	wire [15:0] fr_data;
+	wire [DL:0] fr_data;
 	wire        fr_ena;
 	wire        fr_empty;
 
@@ -86,7 +88,7 @@ module spi_dev_memwr #(
 	reg   [1:0] dma_state;
 	reg   [1:0] dma_state_nxt;
 
-	reg  [22:0] dma_addr;
+	reg  [AL:0] dma_addr;
 
 
 	// Wishbone interface
@@ -116,28 +118,26 @@ module spi_dev_memwr #(
 	// SPI-to-FIFO
 	// -----------
 
-	// Command decode
-	always @(posedge clk)
-		if (rst)
-			spi_active <= 1'b0;
-		else
-			spi_active <= (spi_active | (pw_wstb & pw_wcmd & (pw_wdata == CMD_BYTE))) & ~pw_end;
-
-	// Write width adapter
-	always @(posedge clk)
-		spi_byte_sel <= (spi_byte_sel ^ pw_wstb) & spi_active;
-
-	always @(posedge clk)
-		if (pw_wstb)
-			spi_byte_prev <= pw_wdata;
-
-	assign fw_ena  = spi_byte_sel & pw_wstb;
-	assign fw_data = { spi_byte_prev, pw_wdata };
+	// Command decode (with repeat)
+	spi_dev_scmd #(
+		.CMD_BYTE(CMD_BYTE),
+		.CMD_LEN(DATA_WIDTH / 8),
+		.CMD_REPEAT(1)
+	) cmd_I (
+		.pw_wdata (pw_wdata),
+		.pw_wcmd  (pw_wcmd),
+		.pw_wstb  (pw_wstb),
+		.pw_end   (pw_end),
+		.cmd_data (fw_data),
+		.cmd_stb  (fw_ena),
+		.clk      (clk),
+		.rst      (rst)
+	);
 
 	// FIFO instance
 	fifo_sync_ram #(
 		.DEPTH(256),
-		.WIDTH(16)
+		.WIDTH(DATA_WIDTH)
 	) fifo_I (
 		.wr_data  (fw_data),
 		.wr_ena   (fw_ena & ~fw_full),
@@ -176,9 +176,9 @@ module spi_dev_memwr #(
 		if (rst)
 			dma_addr <= 0;
 		else if (bus_we_base)
-			dma_addr <= wb_wdata[22:0];
+			dma_addr <= wb_wdata[AL:0];
 		else if (mi_valid & mi_ready)
-			dma_addr <= dma_addr + 64;
+			dma_addr <= dma_addr + BURST_LEN;
 
 	// Control
 	always @(posedge clk)
@@ -210,7 +210,7 @@ module spi_dev_memwr #(
 
 	// MemIF commands
 	assign mi_addr  = dma_addr;
-	assign mi_len   = 6'd63; // 64 words bursts
+	assign mi_len   = (BURST_LEN - 1);
 	assign mi_rw    = 1'b0;
 	assign mi_valid = (dma_state == DS_CMD);
 
