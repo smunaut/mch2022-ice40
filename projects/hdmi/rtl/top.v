@@ -89,7 +89,7 @@ module top (
 
 	// Memory interface
 		// Upstream to memcontroller
-	wire [31:0] mu_addr;
+	wire [22:0] mu_addr;
 	wire [ 6:0] mu_len;
 	wire        mu_rw;
 	wire        mu_valid;
@@ -104,7 +104,7 @@ module top (
 	wire        mu_rlast;
 
 		// Downstream 0 to HDMI reader
-	wire [31:0] m0_addr;
+	wire [22:0] m0_addr;
 	wire [ 6:0] m0_len;
 	wire        m0_rw;
 	wire        m0_valid;
@@ -119,7 +119,7 @@ module top (
 	wire        m0_rlast;
 
 		// Downstream 1 to SPI writer
-	wire [31:0] m1_addr;
+	wire [22:0] m1_addr;
 	wire [ 6:0] m1_len;
 	wire        m1_rw;
 	wire        m1_valid;
@@ -148,7 +148,7 @@ module top (
 	wire        rst;
 
 
-	// SPI interface
+	// SPI innterface
 	// -------------
 
 	// Device Core
@@ -228,7 +228,7 @@ module top (
 
 	// Arbiter
 	memif_arb #(
-		.AW(32),
+		.AW(23),
 		.DW(16),
 		.WRITE_DISABLE(2'b01)
 	) memarb_I (
@@ -288,7 +288,7 @@ module top (
 		.phy_clk_o  (qpi_phy_clk_o),
 		.phy_cs_o   (qpi_phy_cs_o),
 		.mi_addr_cs (2'b00),
-		.mi_addr    ({mu_addr[22:0], 1'b0 }),	/* 16 bits aligned */
+		.mi_addr    ({mu_addr, 1'b0 }),	/* 16 bits aligned */
 		.mi_len     (mu_len),
 		.mi_rw      (mu_rw),
 		.mi_valid   (mu_valid),
@@ -361,7 +361,12 @@ module top (
 	// SPI memory writer [2]
 	// -----------------
 
-	spi_dev_memwr memwr_I (
+	spi_dev_memwr #(
+		.CMD_BYTE(8'he0),
+		.DATA_WIDTH(16),
+		.ADDR_WIDTH(23),
+		.BURST_LEN(64)
+	) memwr_I (
 		.pw_wdata (pw_wdata),
 		.pw_wcmd  (pw_wcmd),
 		.pw_wstb  (pw_wstb),

@@ -17,7 +17,7 @@ module hdmi_top (
 	output wire  [3:0] hdmi_n,
 
 	// Memory interface
-	output wire [31:0] mi_addr,
+	output wire [22:0] mi_addr,
 	output wire [ 6:0] mi_len,
 	output wire        mi_rw,
 	output wire        mi_valid,
