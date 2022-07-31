@@ -10,6 +10,8 @@
 `default_nettype none
 
 module spi_dev_lcdwr #(
+	// LSB must be 0 and it uses
+	// CMD_BYTE and CMD_BYTE+1
 	parameter [7:0] CMD_BYTE = 8'hf2
 )(
 	// LCD PHY drive
@@ -39,7 +41,10 @@ module spi_dev_lcdwr #(
 		ST_CMD  = 2'b10,
 		ST_DATA = 2'b11;
 
+	wire  [1:0] match;
+	wire        start;
 	reg         active;
+
 	reg   [1:0] state;
 	reg   [1:0] state_nxt;
 
@@ -52,12 +57,17 @@ module spi_dev_lcdwr #(
 	// FSM
 	// ---
 
+	// Matching
+	assign match[0] = (pw_wdata[7:4] == CMD_BYTE[7:4]);
+	assign match[1] = (pw_wdata[3:1] == CMD_BYTE[3:1]);
+	assign start = match[0] & match[1] & pw_wcmd & pw_wstb;
+
 	// SPI Command tracking
 	always @(posedge clk)
 		if (rst)
 			active <= 1'b0;
 		else
-			active <= (active | (pw_wstb & pw_wcmd & (pw_wdata == CMD_BYTE))) & ~pw_end;
+			active <= (active | start) & ~pw_end;
 
 	// State tracking
 	always @(posedge clk or posedge rst)
@@ -78,7 +88,9 @@ module spi_dev_lcdwr #(
 
 		// Reset
 		if (pw_wcmd)
-			state_nxt = ST_LEN;
+			// Only need to consider the LSB since if the rest doesn't match it
+			// doesn't matter what state we are since `active` will stay low
+			state_nxt = pw_wdata[0] ? ST_DATA : ST_LEN;
 	end
 
 	// Data length tracking
@@ -89,7 +101,7 @@ module spi_dev_lcdwr #(
 			data_inf <= 1'b0;
 		end else if (pw_wstb) begin
 			data_len <= ((state == ST_LEN) ? { 1'b0, pw_wdata } : data_len) - 1;
-			data_inf <=  (state == ST_LEN) ? &pw_wdata : data_inf;
+			data_inf <= ((state == ST_LEN) ? &pw_wdata : data_inf) | pw_wcmd;
 		end
 	end
 
