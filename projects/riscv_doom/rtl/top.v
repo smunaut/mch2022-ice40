@@ -33,7 +33,7 @@ module top (
 	output wire       lcd_rs,
 	output wire       lcd_wr_n,
 	output wire       lcd_cs_n,
-	output wire       lcd_mode,
+	input  wire       lcd_mode,
 	output wire       lcd_rst_n,
 	input  wire       lcd_fmark,
 

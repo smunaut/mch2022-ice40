@@ -17,7 +17,7 @@ module vid_top (
 	output wire        lcd_rs,
 	output wire        lcd_wr_n,
 	output wire        lcd_cs_n,
-	output wire        lcd_mode,
+	input  wire        lcd_mode,
 	output wire        lcd_rst_n,
 	input  wire        lcd_fmark,
 
@@ -70,11 +70,6 @@ module vid_top (
 	reg         vc_cs;
 	reg         vc_rst;
 
-	// GPIO
-	wire  [2:0] gpio_i;
-	wire  [2:0] gpio_o;
-	wire  [2:0] gpio_oe;
-
 	// Pixel Pipeline
 	reg         pp_start_pending;
 	reg         pp_start;
@@ -105,11 +100,12 @@ module vid_top (
 	reg         phy_byte_toggle;
 	wire        phy_do_load;
 
-	wire        phy_ena;
 	reg   [7:0] phy_data;
 	reg         phy_rs;
 	reg         phy_valid;
 	wire        phy_ready;
+
+	wire        phy_mode;
 	wire        phy_fmark_stb;
 
 
@@ -188,7 +184,7 @@ module vid_top (
 		pp_active_0,
 		phy_valid,
 		9'h000,
-		gpio_i,
+		phy_mode, vc_rst, vc_cs,
 		vs_in_vbl,
 		vs_frame_cnt
 	};
@@ -217,35 +213,6 @@ module vid_top (
 			vc_rst <= wb_wdata[18];
 			vc_cs  <= wb_wdata[17];
 		end
-
-
-	// GPIO for LCD control
-	// --------------------
-
-	// Instance
-	SB_IO #(
-		.PIN_TYPE(6'b1101_00),   // Reg input, Reg+RegOE output
-		.PULLUP(1'b1),
-		.IO_STANDARD("SB_LVCMOS")
-	) iob_I[2:0] (
-		.PACKAGE_PIN   ({lcd_mode, lcd_rst_n, lcd_cs_n}),
-		.INPUT_CLK     (clk),
-		.OUTPUT_CLK    (clk),
-		.D_IN_0        (gpio_i),
-		.D_OUT_0       (gpio_o),
-		.OUTPUT_ENABLE (gpio_oe)
-	);
-
-	// `lcd_mode` is input only
-	assign gpio_o[2]  = 1'b0;
-	assign gpio_oe[2] = 1'b0;
-
-	// Open Drain outputs
-	assign gpio_o[1:0]  = 2'b00;
-	assign gpio_oe[1:0] = { vc_rst, vc_cs };
-
-	// Auto-enable PHY when mode=1
-	assign phy_ena = gpio_i[2];
 
 
 	// Control FSM
@@ -387,20 +354,25 @@ module vid_top (
 	assign phy_do_load = ~phy_valid | phy_ready;
 	assign pp_ready    =  phy_do_load & phy_byte_toggle;
 
-
 	// Instance
-	lcd_phy #(
+	lcd_phy_full #(
 		.SPEED(1)
-	) phy_I (
+	) lcd_phy_I (
 		.lcd_d         (lcd_d),
 		.lcd_rs        (lcd_rs),
 		.lcd_wr_n      (lcd_wr_n),
+		.lcd_cs_n      (lcd_cs_n),
+		.lcd_mode      (lcd_mode),
+		.lcd_rst_n     (lcd_rst_n),
 		.lcd_fmark     (lcd_fmark),
-		.phy_ena       (phy_ena),
 		.phy_data      (phy_data),
 		.phy_rs        (phy_rs),
 		.phy_valid     (phy_valid),
 		.phy_ready     (phy_ready),
+		.phy_ena       (1'b1),
+		.phy_rst       (vc_rst),
+		.phy_cs        (vc_cs),
+		.phy_mode      (phy_mode),
 		.phy_fmark_stb (phy_fmark_stb),
 		.clk           (clk),
 		.rst           (rst)
