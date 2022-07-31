@@ -340,7 +340,7 @@ module top (
 	);
 
 	// PHY
-	lcd_phy #(
+	lcd_phy_raw #(
 		.SPEED(1)
 	) lcd_phy_I (
 		.lcd_d         (lcd_d),

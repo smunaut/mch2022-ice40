@@ -93,7 +93,7 @@ module lcd_tb;
 	);
 
 	// PHY
-	lcd_phy #(
+	lcd_phy_raw #(
 		.SPEED(0)
 	) lcd_phy_I (
 		.lcd_d         (lcd_d),
