@@ -38,16 +38,16 @@ module lcd_top (
 	// -------
 
 	// LCD PHY
-	wire        phy_ena;
-
 	wire  [7:0] phy_data;
 	wire        phy_rs;
 	wire        phy_valid;
 	wire        phy_ready;
-	wire        phy_fmark_stb;
 
+	wire        phy_ena;
 	wire        phy_rst;
 	wire        phy_cs;
+	wire        phy_mode;
+	wire        phy_fmark_stb;
 
 
 	// Wishbone interface
@@ -68,6 +68,7 @@ module lcd_top (
 	assign phy_rs    = 1'b0;
 	assign phy_valid = 1'b0;
 
+	assign phy_ena = 1'b0;
 	assign phy_rst = 1'b0;
 	assign phy_cs  = 1'b0;
 
@@ -75,44 +76,27 @@ module lcd_top (
 	// PHY
 	// ---
 
-	// Core
-	lcd_phy #(
+	lcd_phy_full #(
 		.SPEED(1)
 	) lcd_phy_I (
 		.lcd_d         (lcd_d),
 		.lcd_rs        (lcd_rs),
 		.lcd_wr_n      (lcd_wr_n),
+		.lcd_cs_n      (lcd_cs_n),
+		.lcd_mode      (lcd_mode),
+		.lcd_rst_n     (lcd_rst_n),
 		.lcd_fmark     (lcd_fmark),
-		.phy_ena       (phy_ena),
 		.phy_data      (phy_data),
 		.phy_rs        (phy_rs),
 		.phy_valid     (phy_valid),
 		.phy_ready     (phy_ready),
+		.phy_ena       (phy_ena),
+		.phy_rst       (phy_rst),
+		.phy_cs        (phy_cs),
+		.phy_mode      (phy_mode),
 		.phy_fmark_stb (phy_fmark_stb),
 		.clk           (clk),
 		.rst           (rst)
-	);
-
-	// Individual IOBs
-	SB_IO #(
-		.PIN_TYPE(6'b1101_01),   // Reg+RegOE output
-		.PULLUP(1'b1),
-		.IO_STANDARD("SB_LVCMOS")
-	) iob_od_I[1:0] (
-		.PACKAGE_PIN   ({lcd_rst_n, lcd_cs_n}),
-		.OUTPUT_CLK    (clk),
-		.D_OUT_0       (2'b00),
-		.OUTPUT_ENABLE ({phy_rst,   phy_cs})
-	);
-
-	SB_IO #(
-		.PIN_TYPE(6'b0000_00),   // Reg input
-		.PULLUP(1'b0),
-		.IO_STANDARD("SB_LVCMOS")
-	) iob_in_I (
-		.PACKAGE_PIN (lcd_mode),
-		.INPUT_CLK   (clk),
-		.D_IN_0      (phy_ena)
 	);
 
 endmodule // lcd_top
