@@ -12,6 +12,15 @@
 `default_nettype none
 
 module top (
+	// LCD
+	output wire [7:0] lcd_d,
+	output wire       lcd_rs,
+	output wire       lcd_wr_n,
+	output wire       lcd_cs_n,
+	output wire       lcd_mode,
+	output wire       lcd_rst_n,
+	input  wire       lcd_fmark,
+
 	// UART (to RP2040)
 	output wire       uart_tx,
 
@@ -58,6 +67,12 @@ module top (
 	reg         uart_valid;
 	wire        uart_ack;
 
+	// LCD PHY
+	wire  [7:0] phy_data;
+	wire        phy_rs;
+	wire        phy_valid;
+	wire        phy_ready;
+
 	// Clock / Reset
 	wire        clk;
 	wire        rst;
@@ -99,6 +114,10 @@ module top (
 	assign btn_rpt_state  = 0;
 	assign btn_rpt_change = 0;
 	assign btn_rpt_stb    = 0;
+
+	assign phy_data  = 8'h0;
+	assign phy_rs    = 1'b0;
+	assign phy_valid = 1'b0;
 `endif
 
 
@@ -194,6 +213,22 @@ module top (
 		.cmd_stb  (btn_rpt_stb),
 		.clk      (clk),
 		.rst      (rst)
+	);
+
+	// LCD Writer
+	spi_dev_lcdwr #(
+		.CMD_BYTE(8'hf2)
+	) spi_pt_I (
+		.phy_data  (phy_data),
+		.phy_rs    (phy_rs),
+		.phy_valid (phy_valid),
+		.phy_ready (phy_ready),
+		.pw_wdata  (pw_wdata),
+		.pw_wcmd   (pw_wcmd),
+		.pw_wstb   (pw_wstb),
+		.pw_end    (pw_end),
+		.clk       (clk),
+		.rst       (rst)
 	);
 
 	// Wishbone bridge
@@ -303,6 +338,34 @@ module top (
 		.clk   (clk),
 		.rst   (rst)
 	);
+
+
+	// LCD
+	// ---
+
+	lcd_phy_full #(
+		.SPEED(1)
+	) phy_I (
+		.lcd_d         (lcd_d),
+		.lcd_rs        (lcd_rs),
+		.lcd_wr_n      (lcd_wr_n),
+		.lcd_cs_n      (lcd_cs_n),
+		.lcd_mode      (lcd_mode),
+		.lcd_rst_n     (lcd_rst_n),
+		.lcd_fmark     (lcd_fmark),
+		.phy_data      (phy_data),
+		.phy_rs        (phy_rs),
+		.phy_valid     (phy_valid),
+		.phy_ready     (phy_ready),
+		.phy_ena       (1'b1),
+		.phy_rst       (1'b0),
+		.phy_cs        (1'b1),
+		.phy_mode      (),
+		.phy_fmark_stb (),
+		.clk           (clk),
+		.rst           (rst)
+	);
+
 
 	// Clock/Reset Generation
 	// ----------------------
