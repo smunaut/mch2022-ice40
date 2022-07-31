@@ -1,7 +1,8 @@
 CORE := lcd
 
 RTL_SRCS_lcd := $(addprefix rtl/, \
-	lcd_phy.v \
+	lcd_phy_raw.v \
+	lcd_phy_full.v \
 )
 
 TESTBENCHES_lcd := \

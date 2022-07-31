@@ -1,5 +1,5 @@
 /*
- * lcd_phy.v
+ * lcd_phy_raw.v
  *
  * vim: ts=4 sw=4
  *
@@ -9,7 +9,7 @@
 
 `default_nettype none
 
-module lcd_phy #(
+module lcd_phy_raw #(
 	parameter integer SPEED = 0		// 0 = clk/2, 1 = clk
 )(
 	// LCD
@@ -140,4 +140,4 @@ endgenerate
 	always @(posedge clk)
 		phy_fmark_stb <= fmark_iob & ~fmark_reg;
 
-endmodule // lcd_phy
+endmodule // lcd_phy_raw
