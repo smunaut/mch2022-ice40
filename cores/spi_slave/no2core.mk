@@ -8,6 +8,7 @@ RTL_SRCS_spi_slave := $(addprefix rtl/, \
 	spi_dev_ezwb.v \
 	spi_dev_fread.v \
 	spi_dev_lcdwr.v \
+	spi_dev_lcdpalwr.v \
 	spi_dev_memwr.v \
 	spi_dev_proto.v \
 	spi_dev_scmd.v \
