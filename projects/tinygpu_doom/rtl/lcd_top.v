@@ -40,15 +40,10 @@ module lcd_top (
 	// -------
 
 	// PHY
-	wire  [7:0] phy0_data;
-	wire        phy0_rs;
-	wire        phy0_valid;
-	wire        phy0_ready;
-
-	wire  [7:0] phy1_data;
-	wire        phy1_rs;
-	wire        phy1_valid;
-	wire        phy1_ready;
+	wire [23:0] usr_data;
+	wire  [2:0] usr_rs;
+	wire  [2:0] usr_valid;
+	wire  [2:0] usr_ready;
 
 	wire  [7:0] phy_data;
 	wire        phy_rs;
@@ -61,10 +56,10 @@ module lcd_top (
 
 	reg lcd_sel;
 
-	assign phy0_data  = lcd_sel ? gpu_data[7:0] : gpu_data[15:8];
-	assign phy0_rs    = 1'b1;
-	assign phy0_valid = gpu_valid;
-	assign gpu_ready  = lcd_sel;
+	assign usr_data[7:0] = lcd_sel ? gpu_data[7:0] : gpu_data[15:8];
+	assign usr_rs[0]     = 1'b1;
+	assign usr_valid[0]  = gpu_valid;
+	assign gpu_ready     = lcd_sel;
 
 	always @(posedge clk)
 		if (rst)
@@ -79,10 +74,29 @@ module lcd_top (
 	spi_dev_lcdwr #(
 		.CMD_BYTE(8'hf2)
 	) spi_pt_I (
-		.phy_data  (phy1_data),
-		.phy_rs    (phy1_rs),
-		.phy_valid (phy1_valid),
-		.phy_ready (phy1_ready),
+		.phy_data  (usr_data[15:8]),
+		.phy_rs    (usr_rs[1]),
+		.phy_valid (usr_valid[1]),
+		.phy_ready (usr_ready[1]),
+		.pw_wdata  (pw_wdata),
+		.pw_wcmd   (pw_wcmd),
+		.pw_wstb   (pw_wstb),
+		.pw_end    (pw_end),
+		.clk       (clk),
+		.rst       (rst)
+	);
+
+
+	// SPI palette writer
+	// ------------------
+
+	spi_dev_lcdpalwr #(
+		.CMD_BYTE(8'he4)
+	) spi_pal_I (
+		.phy_data  (usr_data[23:16]),
+		.phy_rs    (usr_rs[2]),
+		.phy_valid (usr_valid[2]),
+		.phy_ready (usr_ready[2]),
 		.pw_wdata  (pw_wdata),
 		.pw_wcmd   (pw_wcmd),
 		.pw_wstb   (pw_wstb),
@@ -96,12 +110,20 @@ module lcd_top (
 	// ---
 
 	// PHY muxing
-	assign phy_data  = phy0_valid ? phy0_data : phy1_data;
-	assign phy_rs    = phy0_valid ? phy0_rs   : phy1_rs;
-	assign phy_valid = phy0_valid | phy1_valid;
-
-	assign phy0_ready = phy_ready;
-	assign phy1_ready = phy_ready;
+	lcd_phy_mux #(
+		.N(3)
+	) mux_I (
+		.phy_data   (phy_data),
+		.phy_rs     (phy_rs),
+		.phy_valid  (phy_valid),
+		.phy_ready  (phy_ready),
+		.usr_data   (usr_data),
+		.usr_rs     (usr_rs),
+		.usr_valid  (usr_valid),
+		.usr_ready  (usr_ready),
+		.clk        (clk),
+		.rst        (rst)
+	);
 
 	// Core
 	lcd_phy_full #(
