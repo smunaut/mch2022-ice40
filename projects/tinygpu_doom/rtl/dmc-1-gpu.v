@@ -1,4 +1,5 @@
 `define ICE40 1
+`define GPU_EXPORT 1
 `define MCH2022 1
 /*
 [Bare framework] Leave empty, this is used when exporting to verilog
@@ -3658,44 +3659,59 @@ output out_clock;
 input clock;
 assign out_clock = clock;
 wire  [17:0] _w_mem_palette_rdata;
-reg  [7:0] _t_palette_addr;
+reg  [0:0] _t_hold;
+reg  [5:0] _t_r;
+reg  [5:0] _t_g;
+reg  [5:0] _t_b;
+reg  [9:0] _t___block_10_ro;
+reg  [9:0] _t___block_10_go;
+reg  [9:0] _t___block_10_bo;
+reg  [3:0] _t___pip_18_1___block_1_light;
+reg  [0:0] _t___pip_18_0_active;
+reg  [5:0] _t___pip_18_2_b;
+reg  [5:0] _t___pip_18_2_g;
+reg  [5:0] _t___pip_18_2_r;
 reg  [9-1:0] _t_colbufs_addr0;
-wire  [3:0] _w___block_1_light;
-wire  [9:0] _w___block_1_ro;
-wire  [9:0] _w___block_1_go;
-wire  [9:0] _w___block_1_bo;
-wire  [5:0] _w___block_1_r;
-wire  [5:0] _w___block_1_g;
-wire  [5:0] _w___block_1_b;
+reg  [0:0] _t_screen_valid;
+reg  [15:0] _t_screen_data;
 
+reg  [7:0] _d_palette_addr = 0;
+reg  [7:0] _q_palette_addr = 0;
 reg  [7:0] _d_count = 0;
 reg  [7:0] _q_count = 0;
-reg  [0:0] _d_done = 0;
-reg  [0:0] _q_done = 0;
-reg  [0:0] _d_screen_valid = 0;
-reg  [0:0] _q_screen_valid = 0;
-reg  [15:0] _d_screen_data = 0;
-reg  [15:0] _q_screen_data = 0;
+reg  [0:0] _d_active = 0;
+reg  [0:0] _q_active = 0;
+reg  [17:0] _d_pal = 0;
+reg  [17:0] _q_pal = 0;
+reg  [3:0] _d___block_1_light = 0;
+reg  [3:0] _q___block_1_light = 0;
+reg  [3:0] _d___pip_18_2___block_1_light = 0;
+reg  [3:0] _q___pip_18_2___block_1_light = 0;
+reg  [0:0] _d___pip_18_1_active = 0;
+reg  [0:0] _q___pip_18_1_active = 0;
+reg  [0:0] _d___pip_18_2_active = 0;
+reg  [0:0] _q___pip_18_2_active = 0;
+reg  [0:0] _d___pip_18_3_active = 0;
+reg  [0:0] _q___pip_18_3_active = 0;
+reg  [5:0] _d___pip_18_3_b = 0;
+reg  [5:0] _q___pip_18_3_b = 0;
+reg  [5:0] _d___pip_18_3_g = 0;
+reg  [5:0] _q___pip_18_3_g = 0;
+reg  [5:0] _d___pip_18_3_r = 0;
+reg  [5:0] _q___pip_18_3_r = 0;
 reg  [0:0] _d_busy = 1;
 reg  [0:0] _q_busy = 1;
 assign out_colbufs_addr0 = _t_colbufs_addr0;
-assign out_screen_valid = _q_screen_valid;
-assign out_screen_data = _q_screen_data;
+assign out_screen_valid = _t_screen_valid;
+assign out_screen_data = _t_screen_data;
 assign out_busy = _q_busy;
 
 M_column_sender__gpu_sender_mem_palette __mem__palette(
 .clock(clock),
-.in_addr(_t_palette_addr),
+.in_addr(_d_palette_addr),
 .out_rdata(_w_mem_palette_rdata)
 );
 
-assign _w___block_1_light = in_colbufs_rdata0[8+:4];
-assign _w___block_1_ro = _w_mem_palette_rdata[12+:6]*_w___block_1_light;
-assign _w___block_1_go = _w_mem_palette_rdata[6+:6]*_w___block_1_light;
-assign _w___block_1_bo = _w_mem_palette_rdata[0+:6]*_w___block_1_light;
-assign _w___block_1_r = _w___block_1_ro>>4;
-assign _w___block_1_g = _w___block_1_go>>4;
-assign _w___block_1_b = _w___block_1_bo>>4;
 
 `ifdef FORMAL
 initial begin
@@ -3703,36 +3719,94 @@ assume(reset);
 end
 `endif
 always @* begin
+_d_palette_addr = _q_palette_addr;
 _d_count = _q_count;
-_d_done = _q_done;
-_d_screen_valid = _q_screen_valid;
-_d_screen_data = _q_screen_data;
+_d_active = _q_active;
+_d_pal = _q_pal;
+_d___block_1_light = _q___block_1_light;
+_d___pip_18_2___block_1_light = _q___pip_18_2___block_1_light;
+_d___pip_18_1_active = _q___pip_18_1_active;
+_d___pip_18_2_active = _q___pip_18_2_active;
+_d___pip_18_3_active = _q___pip_18_3_active;
+_d___pip_18_3_b = _q___pip_18_3_b;
+_d___pip_18_3_g = _q___pip_18_3_g;
+_d___pip_18_3_r = _q___pip_18_3_r;
 _d_busy = _q_busy;
+_t_r = 0;
+_t_g = 0;
+_t_b = 0;
 // _always_pre
 // __block_1
-_d_done = in_in_start ? 0:(((_q_count==8'd240-1)&in_screen_ready)|_q_done);
+// pipeline
+// -------- stage 3
+// __stage___block_12
+// __block_13
+_t_screen_valid = _q___pip_18_3_active;
 
-_d_busy = ~_d_done;
+_t_hold = _q___pip_18_3_active&~in_screen_ready;
 
-_d_screen_valid = ~_d_done;
+_d_busy = _q___pip_18_3_active;
 
-_d_screen_data = {_w___block_1_r[1+:5],_w___block_1_g[0+:6],_w___block_1_b[1+:5]};
+_t_screen_data = {_q___pip_18_3_r[1+:5],_q___pip_18_3_g[0+:6],_q___pip_18_3_b[1+:5]};
 
-_d_count = reset ? 8'd240:in_in_start ? 0:((~_d_done&in_screen_ready) ? _q_count+1:_q_count);
+// -------- stage 2
+// __stage___block_9
+// __block_10
+_d_pal = _t_hold ? _q_pal:_w_mem_palette_rdata;
 
-_t_palette_addr = reset ? 0:in_colbufs_rdata0[0+:8];
+_d___pip_18_2_active = _t_hold|_q___pip_18_2_active;
+
+_t___block_10_ro = _d_pal[12+:6]*_q___pip_18_2___block_1_light;
+
+_t___block_10_go = _d_pal[6+:6]*_q___pip_18_2___block_1_light;
+
+_t___block_10_bo = _d_pal[0+:6]*_q___pip_18_2___block_1_light;
+
+_t_r = _t___block_10_ro>>4;
+
+_t_g = _t___block_10_go>>4;
+
+_t_b = _t___block_10_bo>>4;
+
+_t___pip_18_2_r = _t_r;
+_t___pip_18_2_b = _t_b;
+_t___pip_18_2_g = _t_g;
+// -------- stage 1
+// __stage___block_6
+// __block_7
+_d___block_1_light = _t_hold ? _q___block_1_light:in_colbufs_rdata0[8+:4];
+
+_d_palette_addr = _t_hold ? _q_palette_addr:in_colbufs_rdata0[0+:8];
+
+_t___pip_18_1___block_1_light = _d___block_1_light;
+// -------- stage 0
+// __stage___block_3
+// __block_4
+_d_count = in_in_start ? 0:((_t_hold|~_q_active) ? _q_count:_q_count+1);
+
+_d_active = in_in_start ? 1:(_d_count==8'd241) ? 0:_q_active;
 
 _t_colbufs_addr0 = {in_buffer,_d_count[0+:8]};
 
+_t___pip_18_0_active = _d_active;
 // __block_2
+// __block_15
 // _always_post
 end
 
 always @(posedge clock) begin
+_q_palette_addr <= _d_palette_addr;
 _q_count <= _d_count;
-_q_done <= _d_done;
-_q_screen_valid <= _d_screen_valid;
-_q_screen_data <= _d_screen_data;
+_q_active <= _d_active;
+_q_pal <= _d_pal;
+_q___block_1_light <= _d___block_1_light;
+_q___pip_18_2___block_1_light <= _t___pip_18_1___block_1_light;
+_q___pip_18_1_active <= _t___pip_18_0_active;
+_q___pip_18_2_active <= _d___pip_18_1_active;
+_q___pip_18_3_active <= _d___pip_18_2_active;
+_q___pip_18_3_b <= _t___pip_18_2_b;
+_q___pip_18_3_g <= _t___pip_18_2_g;
+_q___pip_18_3_r <= _t___pip_18_2_r;
 _q_busy <= _d_busy;
 end
 
